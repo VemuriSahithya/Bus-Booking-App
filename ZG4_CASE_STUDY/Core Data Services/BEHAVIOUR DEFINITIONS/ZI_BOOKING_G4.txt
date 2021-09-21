@@ -1,0 +1,61 @@
+managed;//
+
+
+define behavior for ZI_BOOKING_G4 alias Booking
+implementation in class zbp_i_booking_g4 unique
+persistent table zbookings_g4
+lock master
+//authorization master ( instance )
+etag master LocalLastChangedAt
+{
+  create;
+//  update;
+  delete;
+  field ( numbering : managed, readonly ) BookingUuid;
+  field (readonly) TravelUuid;
+  field(mandatory:create) PhoneNumber, BusId, PassangerName, PassangerAge, Gender, StartDate;
+  field (readonly) BookingDate, CurrentStatus, Pnr, TravelId, UserId, BusName, Source, Destination, Fare, TotalSeats, Duration, DepartureTime;
+  determination changeBusStatus on modify { field BusId; }
+  determination changeTravel on modify { field BusId, StartDate; }
+  determination setCriticality on modify {  field CurrentStatus; }
+  determination changeOnCreate on save { create; }
+  validation validateAge on save { field PassangerAge; }
+  validation validatePhoneNumber on save { field PhoneNumber; }
+  validation validateBusId on save { field BusId; }
+  validation startDate on save { field StartDate; }
+  validation gender on save { field Gender; }
+  validation Booking on save { field CurrentStatus; }
+  validation departureTime on save { field BusId, StartDate; }
+  validation cancelTime on save { delete; }
+  determination onCancellation on save { delete; }
+
+
+  mapping for zbookings_g4{
+    BookingUuid = booking_uuid;
+    TravelUuid = travel_uuid;
+    BookingDate = booking_date;
+    CurrentStatus = current_status;
+    Gender = gender;
+    PassangerAge = passanger_age;
+    PassangerName = passanger_name;
+    PhoneNumber = phone_number;
+    Pnr = pnr;
+    TravelId = travel_id;
+    UserId = user_id;
+    BusId = bus_id;
+    StartDate = start_date;
+    Cancel = empty_seats;
+    BusName = bus_name;
+    DepartureTime = departure_time;
+    Duration = duration;
+    Source = source;
+    Destination = destination;
+    Fare = fare;
+    TotalSeats = total_seats;
+    LastChangedAt = last_changed_at;
+    LocalLastChangedAt = local_last_changed_at;
+
+
+  }
+
+}

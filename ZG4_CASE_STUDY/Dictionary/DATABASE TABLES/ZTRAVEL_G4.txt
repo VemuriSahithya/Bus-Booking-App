@@ -1,0 +1,17 @@
+@EndUserText.label : 'Travel Details Database Table'
+@AbapCatalog.enhancement.category : #NOT_EXTENSIBLE
+@AbapCatalog.tableCategory : #TRANSPARENT
+@AbapCatalog.deliveryClass : #A
+@AbapCatalog.dataMaintenance : #RESTRICTED
+define table ztravel_g4 {
+  key client            : abap.clnt not null;
+  key travel_uuid       : sysuuid_x16 not null;
+  bus_uuid              : sysuuid_x16 not null;
+  travel_id             : zde_travelide;
+  bus_id                : zde_buside;
+  start_date            : zde_start_date;
+  empty_seats           : zde_empty_seats;
+  last_changed_at       : timestampl;
+  local_last_changed_at : timestampl;
+
+}

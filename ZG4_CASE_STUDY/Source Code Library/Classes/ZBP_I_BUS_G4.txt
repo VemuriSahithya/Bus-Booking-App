@@ -1,0 +1,125 @@
+CLASS lhc_Bus DEFINITION INHERITING FROM cl_abap_behavior_handler.
+  PRIVATE SECTION.
+
+    METHODS changeOnCreate FOR DETERMINE ON SAVE
+      IMPORTING keys FOR Bus~changeOnCreate.
+
+    METHODS changeOnDelete FOR DETERMINE ON SAVE
+      IMPORTING keys FOR Bus~changeOnDelete.
+
+    METHODS fare FOR VALIDATE ON SAVE
+      IMPORTING keys FOR Bus~fare.
+
+    METHODS totalDuration FOR VALIDATE ON SAVE
+      IMPORTING keys FOR Bus~totalDuration.
+
+    METHODS totalSeats FOR VALIDATE ON SAVE
+      IMPORTING keys FOR Bus~totalSeats.
+
+ENDCLASS.
+
+CLASS lhc_Bus IMPLEMENTATION.
+
+  METHOD changeOnCreate.
+
+*   Generating Bus Id
+    SELECT SINGLE * FROM zvalue
+        WHERE row_number = 1
+        INTO @DATA(values).
+
+    DATA new_bus_id TYPE INT8.
+    new_bus_id = values-bus_id + 1.
+
+    UPDATE zvalue SET bus_id = @new_bus_id
+    WHERE row_number = 1.
+
+    DATA bus_id TYPE STRING.
+    bus_id = new_bus_id.
+
+    MODIFY ENTITIES OF zi_bus_g4 IN LOCAL MODE
+      ENTITY Bus
+        UPDATE
+          FIELDS ( BusId )
+          WITH VALUE #( FOR key in keys
+                        ( %tky = key-%tky
+                          BusId = bus_id
+                           ) ).
+  ENDMETHOD.
+
+  METHOD changeOnDelete.
+    LOOP AT keys INTO DATA(single_key).
+        SELECT SINGLE * FROM zbus_g4
+        WHERE bus_uuid = @single_key-BusUuid
+        INTO @DATA(bus_deletion).
+    ENDLOOP.
+
+    DELETE FROM ztravel_g4 WHERE bus_uuid = @bus_deletion-bus_uuid.
+    DELETE FROM zbookings_g4 WHERE bus_id = @bus_deletion-bus_id.
+
+  ENDMETHOD.
+
+
+  METHOD fare.
+    READ ENTITIES OF zi_bus_g4 IN LOCAL MODE
+      ENTITY Bus
+        FIELDS ( Fare ) WITH CORRESPONDING #( keys )
+      RESULT DATA(buses).
+
+    LOOP AT buses INTO DATA(bus).
+        IF bus-Fare <= 0.
+            APPEND VALUE #(  %tky               = bus-%tky
+                               %state_area        = 'VALIDATE_FARE' )
+                TO reported-bus.APPEND VALUE #( %tky        = bus-%tky
+                                %state_area = 'VALIDATE_FARE'
+                                %msg        = NEW zcm_message_g4(
+                                                  severity = if_abap_behv_message=>severity-error
+                                                   textid = zcm_message_g4=>fare )
+                                %element-Fare = if_abap_behv=>mk-on )
+                TO reported-bus.
+        ENDIF.
+    ENDLOOP.
+  ENDMETHOD.
+
+  METHOD totalDuration.
+    READ ENTITIES OF zi_bus_g4 IN LOCAL MODE
+      ENTITY Bus
+        FIELDS ( Duration ) WITH CORRESPONDING #( keys )
+      RESULT DATA(buses).
+
+    LOOP AT buses INTO DATA(bus).
+        IF bus-Duration <= 0.
+            APPEND VALUE #(  %tky               = bus-%tky
+                               %state_area        = 'VALIDATE_DURATION' )
+                TO reported-bus.APPEND VALUE #( %tky        = bus-%tky
+                                %state_area = 'VALIDATE_DURATION'
+                                %msg        = NEW zcm_message_g4(
+                                                  severity = if_abap_behv_message=>severity-error
+                                                   textid = zcm_message_g4=>duration )
+                                %element-Duration = if_abap_behv=>mk-on )
+                TO reported-bus.
+        ENDIF.
+    ENDLOOP.
+  ENDMETHOD.
+
+  METHOD totalSeats.
+    READ ENTITIES OF zi_bus_g4 IN LOCAL MODE
+      ENTITY Bus
+        FIELDS ( TotalSeats ) WITH CORRESPONDING #( keys )
+      RESULT DATA(buses).
+
+    LOOP AT buses INTO DATA(bus).
+        IF bus-TotalSeats <= 0.
+            APPEND VALUE #(  %tky               = bus-%tky
+                               %state_area        = 'VALIDATE_TOTAL_SEATS' )
+                TO reported-bus.APPEND VALUE #( %tky        = bus-%tky
+                                %state_area = 'VALIDATE_TOTAL_SEATS'
+                                %msg        = NEW zcm_message_g4(
+                                                  severity = if_abap_behv_message=>severity-error
+                                                   textid = zcm_message_g4=>totalseats )
+                                %element-TotalSeats = if_abap_behv=>mk-on )
+                TO reported-bus.
+        ENDIF.
+    ENDLOOP.
+  ENDMETHOD.
+
+ENDCLASS.

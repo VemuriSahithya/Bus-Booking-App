@@ -1,0 +1,151 @@
+CLASS zcm_message_g4 DEFINITION
+  PUBLIC
+  INHERITING FROM cx_static_check
+  FINAL
+  CREATE PUBLIC .
+
+  PUBLIC SECTION.
+
+    INTERFACES if_abap_behv_message .
+    INTERFACES if_t100_dyn_msg .
+    INTERFACES if_t100_message .
+
+    CONSTANTS:
+      BEGIN OF start_date_less,
+        msgid TYPE symsgid VALUE 'Z_MESSAGE_G4',
+        msgno TYPE symsgno VALUE '001',
+        attr1 TYPE scx_attrname VALUE '',
+        attr2 TYPE scx_attrname VALUE '',
+        attr3 TYPE scx_attrname VALUE '',
+        attr4 TYPE scx_attrname VALUE '',
+      END OF start_date_less .
+    CONSTANTS:
+      BEGIN OF start_date_more,
+        msgid TYPE symsgid VALUE 'Z_MESSAGE_G4',
+        msgno TYPE symsgno VALUE '002',
+        attr1 TYPE scx_attrname VALUE '',
+        attr2 TYPE scx_attrname VALUE '',
+        attr3 TYPE scx_attrname VALUE '',
+        attr4 TYPE scx_attrname VALUE '',
+      END OF start_date_more .
+    CONSTANTS:
+      BEGIN OF age,
+        msgid TYPE symsgid VALUE 'Z_MESSAGE_G4',
+        msgno TYPE symsgno VALUE '003',
+        attr1 TYPE scx_attrname VALUE '',
+        attr2 TYPE scx_attrname VALUE '',
+        attr3 TYPE scx_attrname VALUE '',
+        attr4 TYPE scx_attrname VALUE '',
+      END OF age .
+    CONSTANTS:
+      BEGIN OF phone,
+        msgid TYPE symsgid VALUE 'Z_MESSAGE_G4',
+        msgno TYPE symsgno VALUE '004',
+        attr1 TYPE scx_attrname VALUE '',
+        attr2 TYPE scx_attrname VALUE '',
+        attr3 TYPE scx_attrname VALUE '',
+        attr4 TYPE scx_attrname VALUE '',
+      END OF phone .
+    CONSTANTS:
+      BEGIN OF busId,
+        msgid TYPE symsgid VALUE 'Z_MESSAGE_G4',
+        msgno TYPE symsgno VALUE '005',
+        attr1 TYPE scx_attrname VALUE '',
+        attr2 TYPE scx_attrname VALUE '',
+        attr3 TYPE scx_attrname VALUE '',
+        attr4 TYPE scx_attrname VALUE '',
+      END OF busId .
+    CONSTANTS:
+      BEGIN OF totalSeats,
+        msgid TYPE symsgid VALUE 'Z_MESSAGE_G4',
+        msgno TYPE symsgno VALUE '006',
+        attr1 TYPE scx_attrname VALUE '',
+        attr2 TYPE scx_attrname VALUE '',
+        attr3 TYPE scx_attrname VALUE '',
+        attr4 TYPE scx_attrname VALUE '',
+      END OF totalSeats .
+    CONSTANTS:
+      BEGIN OF fare,
+        msgid TYPE symsgid VALUE 'Z_MESSAGE_G4',
+        msgno TYPE symsgno VALUE '007',
+        attr1 TYPE scx_attrname VALUE '',
+        attr2 TYPE scx_attrname VALUE '',
+        attr3 TYPE scx_attrname VALUE '',
+        attr4 TYPE scx_attrname VALUE '',
+      END OF fare .
+    CONSTANTS:
+      BEGIN OF duration,
+        msgid TYPE symsgid VALUE 'Z_MESSAGE_G4',
+        msgno TYPE symsgno VALUE '008',
+        attr1 TYPE scx_attrname VALUE '',
+        attr2 TYPE scx_attrname VALUE '',
+        attr3 TYPE scx_attrname VALUE '',
+        attr4 TYPE scx_attrname VALUE '',
+      END OF duration .
+    CONSTANTS:
+      BEGIN OF gender,
+        msgid TYPE symsgid VALUE 'Z_MESSAGE_G4',
+        msgno TYPE symsgno VALUE '009',
+        attr1 TYPE scx_attrname VALUE '',
+        attr2 TYPE scx_attrname VALUE '',
+        attr3 TYPE scx_attrname VALUE '',
+        attr4 TYPE scx_attrname VALUE '',
+      END OF gender .
+    CONSTANTS:
+      BEGIN OF cancelTime,
+        msgid TYPE symsgid VALUE 'Z_MESSAGE_G4',
+        msgno TYPE symsgno VALUE '010',
+        attr1 TYPE scx_attrname VALUE '',
+        attr2 TYPE scx_attrname VALUE '',
+        attr3 TYPE scx_attrname VALUE '',
+        attr4 TYPE scx_attrname VALUE '',
+      END OF cancelTime .
+    CONSTANTS:
+      BEGIN OF waiting,
+        msgid TYPE symsgid VALUE 'Z_MESSAGE_G4',
+        msgno TYPE symsgno VALUE '011',
+        attr1 TYPE scx_attrname VALUE '',
+        attr2 TYPE scx_attrname VALUE '',
+        attr3 TYPE scx_attrname VALUE '',
+        attr4 TYPE scx_attrname VALUE '',
+      END OF waiting .
+    CONSTANTS:
+      BEGIN OF departTime,
+        msgid TYPE symsgid VALUE 'Z_MESSAGE_G4',
+        msgno TYPE symsgno VALUE '012',
+        attr1 TYPE scx_attrname VALUE '',
+        attr2 TYPE scx_attrname VALUE '',
+        attr3 TYPE scx_attrname VALUE '',
+        attr4 TYPE scx_attrname VALUE '',
+      END OF departTime .
+    METHODS constructor
+      IMPORTING
+        severity   TYPE if_abap_behv_message=>t_severity DEFAULT if_abap_behv_message=>severity-error
+        textid     LIKE if_t100_message=>t100key OPTIONAL
+        previous   TYPE REF TO cx_root OPTIONAL.
+  PROTECTED SECTION.
+  PRIVATE SECTION.
+ENDCLASS.
+
+
+
+CLASS zcm_message_g4 IMPLEMENTATION.
+
+
+  METHOD constructor ##ADT_SUPPRESS_GENERATION.
+    CALL METHOD super->constructor
+      EXPORTING
+        previous = previous.
+    CLEAR me->textid.
+    IF textid IS INITIAL.
+      if_t100_message~t100key = if_t100_message=>default_textid.
+    ELSE.
+      if_t100_message~t100key = textid.
+    ENDIF.
+
+    me->if_abap_behv_message~m_severity = severity.
+  ENDMETHOD.
+
+
+
+ENDCLASS.

@@ -1,0 +1,166 @@
+CLASS zc_insert_data DEFINITION
+PUBLIC
+FINAL
+CREATE PUBLIC .
+
+
+
+PUBLIC SECTION.
+
+
+
+INTERFACES if_oo_adt_classrun .
+METHODS add_user_data.
+
+PROTECTED SECTION.
+PRIVATE SECTION.
+ENDCLASS.
+
+
+
+
+
+CLASS zc_insert_data IMPLEMENTATION.
+
+
+
+METHOD add_user_data.
+
+
+
+data bustab1 type STANDARD TABLE OF zvalue.
+
+bustab1 = VALUE #(
+( row_number = 1 pnr = '10000' travel_id = '1000' bus_id = '100' )
+).
+
+insert zvalue from table @bustab1.
+
+*data bustab type STANDARD TABLE OF zgender.
+*
+*bustab = VALUE #(
+*( gender_uuid = '1' gender = 'Male' )
+*).
+*insert zgender from table @bustab.
+*
+*
+*bustab = VALUE #(
+*( gender_uuid = '2' gender = 'Female' )
+*).
+*insert zgender from table @bustab.
+*
+*
+*bustab = VALUE #(
+*( gender_uuid = '3' gender = 'Others' )
+*).
+*
+*insert zgender from table @bustab.
+*
+*bustab = VALUE #(
+*( gender_uuid = '4' gender = 'Do Not Specify' )
+*).
+*
+*insert zgender from table @bustab.
+
+ENDMETHOD.
+
+
+
+METHOD if_oo_adt_classrun~main.
+
+*out->write( 'Hey' ).
+*    READ ENTITIES OF ZI_BUS_G4
+*          ENTITY Bus
+*            ALL FIELDS
+*                WITH CORRESPONDING #(  )
+*            RESULT DATA(travels).
+*     SELECT COUNT( * ) FROM ztravel_g4
+*     WHERE bus_id = '2' AND start_date = '21121221'
+*     INTO @DATA(travel).
+
+
+*MODIFY ENTITIES OF zi_booking_g4 IN LOCAL MODE
+*                  ENTITY Booking
+*                    UPDATE
+*                      FIELDS ( Pnr TravelId TravelUuid CurrentStatus )
+*                      WITH VALUE #( FOR key in keys
+*                                    ( %tky = key-%tky
+*                                      Pnr = attr1 ) ).
+
+*SELECT COUNT( * ) FROM ztravel_g4
+*        INTO @DATA(count_total_rows).
+*    out->write( count_total_rows ).
+
+    DELETE From zbus_g4.
+    DELETE From zbookings_g4.
+    DELETE From ztravel_g4.
+    DELETE From zvalue.
+*DATA: stamp_2 TYPE TIMESTAMPL.
+*
+*GET TIME STAMP FIELD stamp_2.
+*READ ENTITIES OF zi_booking_g4
+*       ENTITY Booking
+*         FIELDS ( BookingUuid ) WITH CORRESPONDING #( keys )
+*       RESULT DATA(travels)
+*       FAILED failed.
+*DATA str TYPE STRING VALUE 'WL 99'.
+*DATA wl_count TYPE INT8 VALUE 0.
+*DATA temp_count TYPE STRING.
+*temp_count = str+3.
+*wl_count = temp_count.
+
+
+*SELECT * FROM zbookings_g4
+*        INTO table @DATA(bus_count).
+
+*DATA: current_status TYPE STRING VALUE 'WL 3',
+*      cur_booking_temp_count TYPE STRING,
+*      cur_booking_wl_count TYPE INT8,
+*      temp_str_status TYPE STRING,
+*      new_cur_status TYPE STRING.
+*    cur_booking_temp_count = current_status.
+*            cur_booking_temp_count = cur_booking_temp_count+3.
+*            cur_booking_wl_count = cur_booking_temp_count.
+*            cur_booking_wl_count = cur_booking_wl_count - 1.
+*            temp_str_status = cur_booking_wl_count.
+*            new_cur_status = ''.
+*            CONCATENATE 'WL' temp_str_status INTO new_cur_status SEPARATED BY space.
+*DELETE FROM ztravel_g4.
+add_user_data(  ).
+*DATA: tst TYPE timestamp,
+*      d TYPE sy-datum,
+*      t TYPE sy-uzeit.
+*GET TIME STAMP FIELD tst.
+*CONVERT TIME STAMP tst TIME ZONE 'INDIA' INTO DATE d TIME t.
+*out->write( d ).
+*out->write( t ).
+*data:  tstamp type timestamp,
+*       datum  type sy-datum,
+*       uzeit  type sy-uzeit,
+*       new_date type sy-datum,
+*       new_time type sy-uzeit,
+*       stamp(14) type c,
+*       time_zone_adjustment(20) type c.
+*
+*datum = sy-datum.
+*uzeit = sy-uzeit.
+*
+*out->write( datum ).
+*out->write( uzeit ).
+*
+*
+*time_zone_adjustment =  'INDIA' .
+*convert date datum time uzeit into
+*      time stamp tstamp time zone time_zone_adjustment.
+*
+*clear stamp.
+*stamp = stamp + tstamp.
+*
+*new_date = stamp+0(8).
+*new_time = stamp+8(6).
+*out->write( new_date ).
+*out->write( new_time ).
+*out->write( tst ).
+
+ENDMETHOD.
+ENDCLASS.

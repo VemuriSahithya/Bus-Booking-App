@@ -1,0 +1,20 @@
+@EndUserText.label : 'Bus Detail Table'
+@AbapCatalog.enhancement.category : #NOT_EXTENSIBLE
+@AbapCatalog.tableCategory : #TRANSPARENT
+@AbapCatalog.deliveryClass : #A
+@AbapCatalog.dataMaintenance : #RESTRICTED
+define table zbus_g4 {
+  key client            : mandt not null;
+  key bus_uuid          : sysuuid_x16 not null;
+  bus_id                : zde_buside;
+  bus_name              : zde_bus_name_;
+  source                : zde_src;
+  destination           : zde_dest;
+  fare                  : zde_fare_;
+  total_seats           : zde_total_seats;
+  departure_time        : zde_departure_time;
+  duration              : zde_duration;
+  last_changed_at       : timestampl;
+  local_last_changed_at : timestampl;
+
+}

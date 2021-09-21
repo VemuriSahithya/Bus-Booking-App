@@ -1,0 +1,85 @@
+@Metadata.layer: #CORE
+@UI: { headerInfo: { typeName: 'Booking', typeNamePlural: 'Bookings', 
+                     title: { type: #STANDARD, label: 'Booking' }},
+                     presentationVariant: [{ sortOrder: [{by: 'StartDate', direction: #ASC }] }]}
+annotate view ZC_Booking_G4
+    with 
+{
+    @UI.facet: [{ id: 'Booking',
+    purpose: #STANDARD,
+    type: #IDENTIFICATION_REFERENCE,
+    label: 'Booking',
+    position: 10}]
+    @UI:{ identification: [{ position: 1, label: 'Booking UUID' }] }
+    @UI.hidden: true
+    BookingUuid;
+    @UI: {  lineItem:       [ { position: 20, importance: #HIGH } ],
+          identification: [ { position: 20 } ],
+          selectionField: [ { position: 20 } ] }
+    PassangerName;
+    @UI: {  lineItem:       [ { position: 30 } ],
+          identification: [ { position: 30 } ],
+          selectionField: [ { position: 30 } ] }
+    Pnr;
+    @UI: {  lineItem:       [ { position: 40, importance: #HIGH } ],
+          identification: [ { position: 40 } ],
+          selectionField: [ { position: 40 } ] }
+    Source;
+    @UI: {  lineItem:       [ { position: 50, importance: #HIGH } ],
+          identification: [ { position: 50 } ],
+          selectionField: [ { position: 50 } ] }
+    Destination;
+    @UI: {  lineItem:       [ { position: 51, importance: #HIGH } ],
+          identification: [ { position: 51 } ],
+          selectionField: [ { position: 51 } ] }
+    StartDate;
+    @UI: {  lineItem:       [ { position: 70 } ],
+          identification: [ { position: 70 } ] }
+    DepartureTime;
+    @UI: {  lineItem:       [ { position: 80, label: 'Current Status', importance: #HIGH, criticality: 'Criticality' } ],
+          identification: [ { position: 80 } ] }
+    CurrentStatus;
+    @UI: {  lineItem:       [ { position: 90 } ],
+          identification: [ { position: 90 } ]}
+    Duration;
+    @UI: {  lineItem:       [ { position: 100 } ],
+          identification: [ { position: 100 } ] }
+    Fare;
+    @UI: {  lineItem:       [ { position: 52 } ],
+          identification: [ { position: 52 } ] }
+    PhoneNumber;
+    @UI: {  lineItem:       [ { position: 120 } ],
+          identification: [ { position: 120 } ] }
+    BookingDate;
+    @UI: {  lineItem:       [ { position: 21 } ],
+          identification: [ { position: 21 } ],
+          selectionField: [ { position: 21 } ] }
+    BusId;
+    @UI: {  lineItem:       [ { position: 140 } ],
+          identification: [ { position: 140 } ] }
+    BusName;
+    @UI: {  lineItem:       [ { position: 91 } ],
+          identification: [ { position: 91 } ] }
+    Gender;
+    @UI: {  lineItem:       [ { position: 92 } ],
+          identification: [ { position: 92 } ] }
+    PassangerAge;
+    @UI: {  lineItem:       [ { position: 180 } ],
+          identification: [ { position: 180 } ],
+          selectionField: [ { position: 180 } ] }
+    @UI.hidden: true
+    UserId;
+    @UI.hidden: true
+    TravelId;
+    @UI.hidden: true
+    TravelUuid;
+    @UI.hidden: true
+    LastChangedAt;
+    @UI.hidden: true
+    LocalLastChangedAt;
+    @UI.hidden: true
+    Cancel;
+    @UI.hidden: true
+    TotalSeats;
+    
+}

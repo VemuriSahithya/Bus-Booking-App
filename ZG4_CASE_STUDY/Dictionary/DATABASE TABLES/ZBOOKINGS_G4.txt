@@ -1,0 +1,32 @@
+@EndUserText.label : 'Bookings Detail Table'
+@AbapCatalog.enhancement.category : #NOT_EXTENSIBLE
+@AbapCatalog.tableCategory : #TRANSPARENT
+@AbapCatalog.deliveryClass : #A
+@AbapCatalog.dataMaintenance : #RESTRICTED
+define table zbookings_g4 {
+  key client            : mandt not null;
+  key booking_uuid      : sysuuid_x16 not null;
+  travel_uuid           : sysuuid_x16 not null;
+  booking_date          : zde_booking_datum;
+  current_status        : zde_cur_status;
+  gender                : zde_gender_values;
+  passanger_name        : zde_pass_name;
+  passanger_age         : zde_passenger_age;
+  phone_number          : zde_phone not null;
+  pnr                   : zde_pnr_;
+  user_id               : zde_useride;
+  travel_id             : zde_travelide;
+  bus_id                : zde_buside;
+  start_date            : zde_start_date;
+  empty_seats           : zde_empty_seats;
+  bus_name              : zde_bus_name_;
+  departure_time        : zde_departure_time;
+  duration              : zde_duration;
+  source                : zde_src;
+  destination           : zde_dest;
+  fare                  : zde_fare_;
+  total_seats           : zde_total_seats;
+  last_changed_at       : timestampl;
+  local_last_changed_at : timestampl;
+
+}

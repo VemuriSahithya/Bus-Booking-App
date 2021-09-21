@@ -1,0 +1,691 @@
+CLASS lhc_Booking DEFINITION INHERITING FROM cl_abap_behavior_handler.
+  PRIVATE SECTION.
+
+
+    METHODS changeBusStatus FOR DETERMINE ON MODIFY
+      IMPORTING keys FOR Booking~changeBusStatus.
+
+    METHODS changeTravel FOR DETERMINE ON MODIFY
+      IMPORTING keys FOR Booking~changeTravel.
+
+    METHODS validateAge FOR VALIDATE ON SAVE
+      IMPORTING keys FOR Booking~validateAge.
+    METHODS changeOnCreate FOR DETERMINE ON SAVE
+      IMPORTING keys FOR Booking~changeOnCreate.
+    METHODS validatePhoneNumber FOR VALIDATE ON SAVE
+      IMPORTING keys FOR Booking~validatePhoneNumber.
+    METHODS startDate FOR VALIDATE ON SAVE
+      IMPORTING keys FOR Booking~startDate.
+    METHODS onCancellation FOR DETERMINE ON SAVE
+      IMPORTING keys FOR Booking~onCancellation.
+    METHODS validateBusId FOR VALIDATE ON SAVE
+      IMPORTING keys FOR Booking~validateBusId.
+    METHODS gender FOR VALIDATE ON SAVE
+      IMPORTING keys FOR Booking~gender.
+    METHODS Booking FOR VALIDATE ON SAVE
+      IMPORTING keys FOR Booking~Booking.
+    METHODS setCriticality FOR DETERMINE ON MODIFY
+      IMPORTING keys FOR Booking~setCriticality.
+    METHODS departureTime FOR VALIDATE ON SAVE
+      IMPORTING keys FOR Booking~departureTime.
+    METHODS cancelTime FOR VALIDATE ON SAVE
+      IMPORTING keys FOR Booking~cancelTime.
+
+ENDCLASS.
+
+CLASS lhc_Booking IMPLEMENTATION.
+
+  METHOD changeBusStatus.
+    READ ENTITIES OF zi_booking_g4 IN LOCAL MODE
+      ENTITY Booking
+        FIELDS ( BusId ) WITH CORRESPONDING #( keys )
+      RESULT DATA(bookings).
+
+    LOOP AT bookings INTO DATA(booking).
+      SELECT SINGLE * FROM zbus_g4
+      WHERE bus_id = @booking-BusId
+      INTO @DATA(bus).
+
+      MODIFY ENTITIES OF zi_booking_g4 IN LOCAL MODE
+          ENTITY Booking
+            UPDATE
+              FIELDS ( BusName Source Destination DepartureTime Duration Fare )
+              WITH VALUE #(
+                            ( %tky         = booking-%tky
+                              BusName = bus-bus_name
+                              Source = bus-source
+                              Destination = bus-destination
+                              DepartureTime = bus-departure_time
+                              Duration = bus-duration
+                              Fare = bus-fare
+                              ) )
+              REPORTED DATA(update_reported).
+              reported = CORRESPONDING #( DEEP update_reported ).
+
+    ENDLOOP.
+
+  ENDMETHOD.
+
+
+
+
+
+  METHOD changeTravel.
+    READ ENTITIES OF zi_booking_g4 IN LOCAL MODE
+      ENTITY Booking
+        FIELDS ( BusId StartDate ) WITH CORRESPONDING #( keys )
+      RESULT DATA(travels).
+    LOOP AT travels INTO DATA(travel).
+      SELECT COUNT( * ) FROM ztravel_g4
+      WHERE bus_id = @travel-BusId AND start_date = @travel-StartDate
+      INTO @DATA(count_rows).
+      IF count_rows > 0.
+        SELECT SINGLE * FROM ztravel_g4
+        WHERE bus_id = @travel-BusId AND start_date = @travel-StartDate
+        INTO @DATA(travel_data).
+
+        IF travel_data-empty_seats > 0.
+          MODIFY ENTITIES OF zi_booking_g4 IN LOCAL MODE
+            ENTITY Booking
+              UPDATE
+                FIELDS ( TravelUuid CurrentStatus TravelId )
+                WITH VALUE #(
+                              ( %tky         = travel-%tky
+                                TravelUuid = travel_data-travel_uuid
+                                CurrentStatus = 'Available'
+                                TravelId = travel_data-travel_id
+                                ) )
+          FAILED DATA(failed_travel_data)
+          REPORTED DATA(reported_travel_data).
+*          MODIFY ENTITIES OF zi_booking_g4 IN LOCAL MODE
+*                ENTITY Booking
+*                  UPDATE
+*                    FIELDS ( TravelUuid TravelId )
+*                    WITH VALUE #( ( %tky = travel-%tky
+*                                    TravelUuid = travel_data-travel_uuid
+*                                    TravelId = travel_data-travel_id
+*                                     ) ).
+        ELSE.
+          DATA attr2 TYPE string.
+          DATA attr1 TYPE string VALUE 'WL'.
+          DATA cur_status TYPE string.
+          attr2 = ( abs( travel_data-empty_seats - 1 ) ).
+          CONCATENATE attr1 attr2 INTO cur_status SEPARATED BY space.
+          MODIFY ENTITIES OF zi_booking_g4 IN LOCAL MODE
+            ENTITY Booking
+              UPDATE
+                FIELDS ( TravelUuid CurrentStatus TravelId )
+                WITH VALUE #(
+                              ( %tky         = travel-%tky
+                                TravelUuid = travel_data-travel_uuid
+                                CurrentStatus = cur_status
+                                TravelId = travel_data-travel_id
+                                ) ).
+          .
+        ENDIF.
+      ENDIF.
+      IF count_rows = 0.
+
+        SELECT SINGLE * FROM zbus_g4
+        WHERE bus_id = @travel-BusId
+        INTO @DATA(bus_data).
+
+*       Retrieving and updating PNR
+        SELECT SINGLE * FROM zvalue
+            WHERE row_number = 1
+            INTO @DATA(values).
+
+        DATA new_travel_id TYPE int8.
+        new_travel_id = values-travel_id + 1.
+
+        UPDATE zvalue SET travel_id = @new_travel_id
+        WHERE row_number = 1.
+
+        DATA travel_id TYPE string.
+        travel_id = new_travel_id.
+
+*       Creating Travel based on BusId
+        MODIFY ENTITIES OF zi_travel_g4
+          ENTITY Travel
+            CREATE
+              SET FIELDS WITH VALUE
+                #( ( %cid        = 'MyContentID_1'
+                     BusUuid = bus_data-bus_uuid
+                     TravelId = new_travel_id
+                     BusId = travel-BusId
+                     StartDate = travel-StartDate
+                     EmptySeats = bus_data-total_seats
+                     ) )
+        MAPPED DATA(mapped_travel)
+        FAILED DATA(failed_travel)
+        REPORTED DATA(reported_travel).
+
+
+
+*       Reading Travel details based on BusId and Start date
+        READ ENTITIES OF zi_travel_g4
+        ENTITY Travel
+        FIELDS ( TravelId TravelUuid ) WITH VALUE #( FOR created_travel IN mapped_travel-travel
+                                                    ( TravelUuid = created_travel-TravelUuid ) )
+        RESULT DATA(travel_new_data).
+
+*       Updating Travel Details in Booking
+        MODIFY ENTITIES OF zi_booking_g4 IN LOCAL MODE
+              ENTITY Booking
+                UPDATE
+                  FIELDS ( TravelUuid CurrentStatus TravelId )
+                  WITH VALUE #( FOR new_data IN travel_new_data
+                                ( %tky         = travel-%tky
+                                  TravelUuid = new_data-TravelUuid
+                                  CurrentStatus = 'Available'
+                                  TravelId = new_travel_id
+                                  ) ).
+      ENDIF.
+
+    ENDLOOP.
+
+  ENDMETHOD.
+
+
+
+
+
+
+  METHOD validateAge.
+
+*   Reading Entered Age
+    READ ENTITIES OF zi_booking_g4 IN LOCAL MODE
+      ENTITY Booking
+        FIELDS ( PassangerAge ) WITH CORRESPONDING #( keys )
+      RESULT DATA(passangers).
+
+*   Validating Entered Age
+    LOOP AT passangers INTO DATA(passanger).
+      APPEND VALUE #(  %tky               = passanger-%tky
+                       %state_area        = 'VALIDATE_AGE' )
+        TO reported-booking.
+      IF passanger-PassangerAge > 150.
+
+        APPEND VALUE #( %tky        = passanger-%tky
+                        %state_area = 'VALIDATE_AGE'
+                        %msg        = NEW zcm_message_g4(
+                                          severity = if_abap_behv_message=>severity-error
+                                           textid = zcm_message_g4=>age )
+                        %element-PassangerAge = if_abap_behv=>mk-on )
+        TO reported-booking.
+
+      ENDIF.
+
+    ENDLOOP.
+
+  ENDMETHOD.
+
+
+
+
+
+
+
+  METHOD changeOnCreate.
+
+
+*   Code for
+*       a) generating PNR on new booking creation (will fail when cancellation occurs)
+*       b) updating Current status when booking is created
+*       b) associating with Travel
+
+*   Reading BusId and Start Date from Booking
+    READ ENTITIES OF zi_booking_g4 IN LOCAL MODE
+      ENTITY Booking
+        FIELDS ( BusId StartDate ) WITH CORRESPONDING #( keys )
+      RESULT DATA(travels).
+
+    LOOP AT travels INTO DATA(travel).
+
+*     Booking Date.
+      DATA: tst TYPE timestamp,
+              booking_date TYPE sy-datum,
+              t TYPE sy-uzeit.
+      GET TIME STAMP FIELD tst.
+      CONVERT TIME STAMP tst TIME ZONE 'INDIA' INTO DATE booking_date TIME t.
+*      GET TIME STAMP FIELD booking_date.
+      MODIFY ENTITIES OF zi_booking_g4 IN LOCAL MODE
+                   ENTITY Booking
+                     UPDATE
+                       FIELDS ( BookingDate )
+                       WITH VALUE #( ( %tky = travel-%tky
+                                       BookingDate = booking_date
+                                        ) ).
+
+*       Retrieving and updating PNR
+      SELECT SINGLE * FROM zvalue
+          WHERE row_number = 1
+          INTO @DATA(values).
+
+      DATA new_pnr TYPE int8.
+      new_pnr = values-pnr + 1.
+
+      UPDATE zvalue SET pnr = @new_pnr
+      WHERE row_number = 1.
+
+      DATA pnr TYPE string.
+      pnr = new_pnr.
+
+
+*       Generating required Current Status.
+      DATA current_status TYPE string VALUE 'CNF'.
+
+*      SELECT SINGLE * FROM ztravel_g4
+*      WHERE bus_id = @travel-BusId AND start_date = @travel-StartDate
+*      INTO @DATA(travel_new_data).
+
+      READ ENTITIES OF zi_travel_g4
+      ENTITY Travel
+        FIELDS ( EmptySeats StartDate BusId ) WITH VALUE #( ( TravelUuid = travel-TravelUuid ) )
+      RESULT DATA(travel_new_datas).
+
+      LOOP AT travel_new_datas INTO DATA(travel_new_data).
+        IF travel_new_data-StartDate = travel-StartDate AND travel_new_data-BusId = travel-BusId.
+          IF travel_new_data-EmptySeats <= 0.
+            DATA attr1 TYPE string VALUE 'WL'.
+            DATA attr2 TYPE string.
+            attr2 = ( abs( travel_new_data-EmptySeats - 1 ) ).
+            current_status = ''.
+            CONCATENATE attr1 attr2 INTO current_status SEPARATED BY space.
+
+          ENDIF.
+*       UPDATING PNR, Travel Id, Travel UUID and Current Status In Booking
+          MODIFY ENTITIES OF zi_booking_g4 IN LOCAL MODE
+                    ENTITY Booking
+                      UPDATE
+                        FIELDS ( Pnr CurrentStatus )
+                        WITH VALUE #( ( %tky = travel-%tky
+                                        Pnr = pnr
+                                        CurrentStatus = current_status
+                                         ) ).
+*   Code for updating Empty seats when booking is created
+
+          DATA new_empty_seats TYPE int8.
+          new_empty_seats = ( travel_new_data-EmptySeats - 1 ).
+
+*    UPDATE ztravel_g4 SET empty_seats = @new_empty_seats
+*    WHERE bus_id = @travel-BusId AND start_date = @travel-StartDate.
+          MODIFY ENTITIES OF zi_travel_g4
+                          ENTITY Travel
+                            UPDATE
+                              FIELDS ( EmptySeats )
+                              WITH VALUE #( ( %tky = travel_new_data-%tky
+                                              EmptySeats = new_empty_seats
+                                               ) ).
+        ENDIF.
+      ENDLOOP.
+
+*       UPDATING PNR, Travel Id, Travel UUID and Current Status In Booking
+      MODIFY ENTITIES OF zi_booking_g4 IN LOCAL MODE
+                ENTITY Booking
+                  UPDATE
+                    FIELDS ( Pnr CurrentStatus )
+                    WITH VALUE #( ( %tky = travel-%tky
+                                    Pnr = pnr
+                                    CurrentStatus = current_status
+                                     ) ).
+
+    ENDLOOP.
+
+  ENDMETHOD.
+
+  METHOD validatePhoneNumber.
+    READ ENTITIES OF zi_booking_g4 IN LOCAL MODE
+    ENTITY Booking
+      FIELDS ( PhoneNumber ) WITH CORRESPONDING #( keys )
+    RESULT DATA(bookings_phone)
+    FAILED DATA(failed_phone)
+    REPORTED DATA(reported_phone).
+
+    LOOP AT bookings_phone INTO DATA(booking_phone).
+
+      APPEND VALUE #(  %tky               = booking_phone-%tky
+                       %state_area        = 'VALIDATE_PHONE_NUMBER' )
+        TO reported-booking.
+
+      DATA len_phone_number TYPE int1.
+      len_phone_number = strlen( booking_phone-PhoneNumber ).
+      DATA phone_characters_correct TYPE int1.
+      IF booking_phone-PhoneNumber CO '1234567890'.
+        phone_characters_correct = 1.
+      ELSE.
+        phone_characters_correct = 0.
+      ENDIF.
+      IF len_phone_number < 10 OR phone_characters_correct = 0.
+        APPEND VALUE #( %tky        = booking_phone-%tky
+                        %state_area = 'VALIDATE_PHONE_NUMBER'
+                        %msg        = NEW zcm_message_g4(
+                                          severity = if_abap_behv_message=>severity-error
+                                           textid = zcm_message_g4=>phone )
+                        %element-PhoneNumber = if_abap_behv=>mk-on )
+          TO reported-booking.
+
+      ENDIF.
+
+    ENDLOOP.
+  ENDMETHOD.
+
+  METHOD startDate.
+    READ ENTITIES OF zi_booking_g4 IN LOCAL MODE
+      ENTITY Booking
+        FIELDS ( StartDate ) WITH CORRESPONDING #( keys )
+      RESULT DATA(bookings_start_date)
+      FAILED DATA(failed_start_date)
+      REPORTED DATA(reported_start_date).
+
+    LOOP AT bookings_start_date INTO DATA(booking_start_date).
+      DATA: cur_date    TYPE d,
+            latest_date TYPE d.
+      DATA: tst TYPE timestamp,
+              d TYPE sy-datum,
+              t TYPE sy-uzeit.
+      GET TIME STAMP FIELD tst.
+      CONVERT TIME STAMP tst TIME ZONE 'INDIA' INTO DATE d TIME t.
+      cur_date = d.
+      latest_date = cur_date + 90.
+      APPEND VALUE #(  %tky               = booking_start_date-%tky
+                       %state_area        = 'VALIDATE_START_DATE' )
+        TO reported-booking.
+      IF booking_start_date-StartDate < cur_date.
+        APPEND VALUE #( %tky        = booking_start_date-%tky
+                        %state_area = 'VALIDATE_START_DATE'
+                        %msg        = NEW zcm_message_g4(
+                                          severity = if_abap_behv_message=>severity-error
+                                           textid = zcm_message_g4=>start_date_less )
+                        %element-StartDate = if_abap_behv=>mk-on )
+        TO reported-booking.
+      ELSEIF booking_start_date-StartDate > latest_date.
+        APPEND VALUE #( %tky        = booking_start_date-%tky
+                        %state_area = 'VALIDATE_START_DATE'
+                        %msg        = NEW zcm_message_g4(
+                                          severity = if_abap_behv_message=>severity-error
+                                           textid = zcm_message_g4=>start_date_more )
+                        %element-StartDate = if_abap_behv=>mk-on )
+        TO reported-booking.
+      ENDIF.
+
+    ENDLOOP.
+  ENDMETHOD.
+
+  METHOD onCancellation.
+    LOOP AT keys INTO DATA(single_key).
+        SELECT SINGLE * FROM zbookings_g4
+        WHERE booking_uuid = @single_key-BookingUuid
+        INTO @DATA(booking_deletion).
+    ENDLOOP.
+
+*     Incrementing empty seats in Travel Entity
+      READ ENTITIES OF zi_travel_g4
+      ENTITY Travel
+        FIELDS ( EmptySeats ) WITH VALUE #( ( TravelUuid = booking_deletion-travel_uuid ) )
+      RESULT DATA(travel_empty_seats)
+      FAILED DATA(failed_empty_seats)
+      REPORTED DATA(reported_empty_seats).
+
+      MODIFY ENTITIES OF zi_travel_g4
+              ENTITY Travel
+                UPDATE
+                  FIELDS ( EmptySeats )
+                  WITH VALUE #( FOR travel_empty_seat IN travel_empty_seats
+                                  ( %tky = travel_empty_seat-%tky
+                                      EmptySeats = travel_empty_seat-EmptySeats + 1
+                                   ) ).
+
+*     Modify Current Status of other bookings.
+
+      SELECT * FROM zbookings_g4 WHERE travel_uuid = @booking_deletion-travel_uuid
+        INTO table @DATA(bookings_status).
+
+      DATA flag_status TYPE int1 VALUE 0.
+      IF booking_deletion-current_status = 'CNF'.
+        flag_status = 1.
+      ENDIF.
+
+      DATA wl_count TYPE int8 VALUE 0.
+      IF flag_status = 0.
+        DATA temp_count TYPE string.
+        temp_count = booking_deletion-current_status.
+        temp_count = temp_count+3.
+        wl_count = temp_count.
+      ENDIF.
+
+
+      DATA cur_booking_wl_count TYPE int8.
+      DATA cur_booking_temp_count TYPE string.
+      DATA new_cur_status TYPE string.
+      DATA temp_str_status TYPE string.
+
+      LOOP AT bookings_status INTO DATA(booking_status).
+*        IF booking_status-TravelUuid = booking_deletion-TravelUuid.
+          DATA Num TYPE int8 VALUE 2.
+          IF flag_status = 1.
+            IF booking_status-current_status <> 'CNF'.
+              cur_booking_temp_count = booking_status-current_status.
+              cur_booking_temp_count = cur_booking_temp_count+3.
+              cur_booking_wl_count = cur_booking_temp_count.
+              IF cur_booking_wl_count = 1.
+                new_cur_status = 'CNF'.
+              ELSE.
+                cur_booking_wl_count = cur_booking_wl_count - 1.
+                temp_str_status = cur_booking_wl_count.
+                new_cur_status = ''.
+                CONCATENATE 'WL' temp_str_status INTO new_cur_status SEPARATED BY space.
+                .
+              ENDIF.
+              UPDATE zbookings_g4
+              SET current_status = @new_cur_status
+              WHERE booking_uuid = @booking_status-booking_uuid.
+            ENDIF.
+          ELSE.
+            IF booking_status-current_status <> 'CNF'.
+                cur_booking_temp_count = booking_status-current_status.
+                cur_booking_temp_count = cur_booking_temp_count+3.
+                cur_booking_wl_count = cur_booking_temp_count.
+                IF cur_booking_wl_count > wl_count.
+                    cur_booking_wl_count = cur_booking_wl_count - 1.
+                    temp_str_status = cur_booking_wl_count.
+                    new_cur_status = ''.
+                    CONCATENATE 'WL' temp_str_status INTO new_cur_status SEPARATED BY space.
+                    UPDATE zbookings_g4
+                    SET current_status = @new_cur_status
+                    WHERE booking_uuid = @booking_status-booking_uuid.
+                ENDIF.
+            ENDIF.
+            .
+          ENDIF.
+
+    ENDLOOP.
+
+  ENDMETHOD.
+
+  METHOD validateBusId.
+    READ ENTITIES OF zi_booking_g4 IN LOCAL MODE
+    ENTITY Booking
+      FIELDS ( BusId ) WITH CORRESPONDING #( keys )
+    RESULT DATA(bookings_bus_id)
+    FAILED DATA(failed_bus_id)
+    REPORTED DATA(reported_bus_id).
+
+    LOOP AT bookings_bus_id INTO DATA(booking_bus_id).
+        SELECT count( * ) FROM zbus_g4
+        WHERE bus_id = @booking_bus_id-BusId
+        INTO @DATA(bus_count).
+
+        IF bus_count = 0.
+            APPEND VALUE #(  %tky               = booking_bus_id-%tky
+                           %state_area        = 'VALIDATE_BusId' )
+            TO reported-booking.
+
+            APPEND VALUE #( %tky        = booking_bus_id-%tky
+                        %state_area = 'VALIDATE_Bus_Id'
+                        %msg        = NEW zcm_message_g4(
+                                          severity = if_abap_behv_message=>severity-error
+                                           textid = zcm_message_g4=>busid )
+                        %element-BusId = if_abap_behv=>mk-on )
+        TO reported-booking.
+
+        ENDIF.
+    ENDLOOP.
+  ENDMETHOD.
+
+  METHOD gender.
+    READ ENTITIES OF zi_booking_g4 IN LOCAL MODE
+    ENTITY Booking
+      FIELDS ( Gender ) WITH CORRESPONDING #( keys )
+    RESULT DATA(bookings_gender)
+    FAILED DATA(failed_gender)
+    REPORTED DATA(reported_gender).
+
+    LOOP AT bookings_gender INTO DATA(booking_gender).
+
+        IF booking_gender-Gender <> 'MALE' and booking_gender-Gender <> 'FEMALE' and booking_gender-Gender <> 'DO NOT SPECIFY' and booking_gender-Gender <> 'Others'.
+            APPEND VALUE #(  %tky               = booking_gender-%tky
+                           %state_area        = 'VALIDATE_GENDER' )
+            TO reported-booking.
+
+            APPEND VALUE #( %tky        = booking_gender-%tky
+                        %state_area = 'VALIDATE_GENDER'
+                        %msg        = NEW zcm_message_g4(
+                                          severity = if_abap_behv_message=>severity-error
+                                           textid = zcm_message_g4=>gender )
+                        %element-Gender = if_abap_behv=>mk-on )
+        TO reported-booking.
+
+        ENDIF.
+    ENDLOOP.
+  ENDMETHOD.
+
+  METHOD Booking.
+    READ ENTITIES OF zi_booking_g4 IN LOCAL MODE
+    ENTITY Booking
+      FIELDS ( TravelUuid BusId ) WITH CORRESPONDING #( keys )
+    RESULT DATA(bookings_waiting)
+    FAILED DATA(failed_waiting)
+    REPORTED DATA(reported_waiting).
+
+
+
+    LOOP AT bookings_waiting INTO DATA(booking_waiting).
+        READ ENTITIES OF zi_travel_g4
+        ENTITY Travel
+        FIELDS ( EmptySeats ) WITH VALUE #( ( TravelUuid = booking_waiting-TravelUuid ) )
+        RESULT DATA(travel_seats)
+        FAILED DATA(failed_travel_seat)
+        REPORTED DATA(reported_travel_seat).
+
+        SELECT COUNT( * ) FROM zbus_g4
+        WHERE bus_id = @booking_waiting-BusId
+        INTO @DATA(bus_count).
+
+        LOOP AT travel_seats INTO DATA(travel_seat).
+
+        IF travel_seat-EmptySeats < 0 and bus_count <> 0.
+            APPEND VALUE #(  %tky               = booking_waiting-%tky
+                           %state_area        = 'VALIDATE_WAITING' )
+            TO reported-booking.
+
+            APPEND VALUE #( %tky        = booking_waiting-%tky
+                        %state_area = 'VALIDATE_WAITING'
+                        %msg        = NEW zcm_message_g4(
+                                          severity = if_abap_behv_message=>severity-warning
+                                           textid = zcm_message_g4=>waiting )
+                        %element-CurrentStatus = if_abap_behv=>mk-on )
+        TO reported-booking.
+
+        ENDIF.
+        ENDLOOP.
+    ENDLOOP.
+  ENDMETHOD.
+
+  METHOD setCriticality.
+    READ ENTITIES OF zi_booking_g4 IN LOCAL MODE
+    ENTITY Booking
+      FIELDS ( CurrentStatus ) WITH CORRESPONDING #( keys )
+    RESULT DATA(bookings_status)
+    FAILED DATA(failed_bookings_status)
+    REPORTED DATA(reported_bookings_status).
+
+    MODIFY ENTITIES OF zi_booking_g4 IN LOCAL MODE
+      ENTITY Booking
+        UPDATE FIELDS ( Criticality )
+        WITH VALUE #( FOR booking_status IN bookings_status INDEX INTO i (
+                         %tky = booking_status-%tky
+                         criticality = COND #( WHEN ( booking_status-CurrentStatus = 'CNF' )
+                                                                    THEN '3'  ELSE '2'  )
+                      ) )
+    REPORTED DATA(lt_reported).
+
+    reported = CORRESPONDING #(  DEEP lt_reported ).
+
+  ENDMETHOD.
+
+  METHOD departureTime.
+
+      READ ENTITIES OF zi_booking_g4 IN LOCAL MODE
+        ENTITY Booking
+          FIELDS ( BusId StartDate ) WITH CORRESPONDING #( keys )
+        RESULT DATA(bookings_depart_time)
+        FAILED DATA(failed_depart_time)
+        REPORTED DATA(reported_depart_time).
+
+      LOOP AT bookings_depart_time INTO DATA(booking_depart_time).
+        SELECT SINGLE * FROM zbus_g4
+        WHERE bus_id = @booking_depart_time-BusId
+        INTO @DATA(bus_depart).
+        DATA: tst TYPE timestamp,
+              d TYPE sy-datum,
+              t TYPE sy-uzeit.
+        GET TIME STAMP FIELD tst.
+        CONVERT TIME STAMP tst TIME ZONE 'INDIA' INTO DATE d TIME t.
+        IF booking_depart_time-StartDate = d AND bus_depart-departure_time < t.
+            APPEND VALUE #(  %tky               = booking_depart_time-%tky
+                           %state_area        = 'VALIDATE_DEPARTURE_Date' )
+            TO reported-booking.
+
+            APPEND VALUE #( %tky        = booking_depart_time-%tky
+                        %state_area = 'VALIDATE_DEPARTURE_Date'
+                        %msg        = NEW zcm_message_g4(
+                                          severity = if_abap_behv_message=>severity-error
+                                           textid = zcm_message_g4=>departtime )
+                        %element-StartDate = if_abap_behv=>mk-on )
+            TO reported-booking.
+        ENDIF.
+      ENDLOOP.
+
+  ENDMETHOD.
+
+  METHOD cancelTime.
+    LOOP AT keys INTO DATA(single_key).
+    SELECT SINGLE * FROM zbookings_g4
+    WHERE booking_uuid = @single_key-BookingUuid
+    INTO @DATA(booking_deletion).
+    ENDLOOP.
+
+    DATA: tst TYPE timestamp,
+              d TYPE sy-datum,
+              tomorrow TYPE sy-datum,
+              t TYPE sy-uzeit.
+    GET TIME STAMP FIELD tst.
+    CONVERT TIME STAMP tst TIME ZONE 'INDIA' INTO DATE d TIME t.
+    tomorrow = d + 1.
+    IF booking_deletion-start_date = d or ( booking_deletion-start_date = tomorrow and t > booking_deletion-departure_time ).
+        APPEND VALUE #(  %tky               = single_key-%tky
+                           %state_area        = 'VALIDATE_Cancellation' )
+            TO reported-booking.
+
+            APPEND VALUE #( %tky        = single_key-%tky
+                        %state_area = 'VALIDATE_Cancellation'
+                        %msg        = NEW zcm_message_g4(
+                                          severity = if_abap_behv_message=>severity-error
+                                           textid = zcm_message_g4=>canceltime )
+                        %element-DepartureTime = if_abap_behv=>mk-on )
+            TO reported-booking.
+    ENDIF.
+  ENDMETHOD.
+
+ENDCLASS.

@@ -1,0 +1,13 @@
+@EndUserText.label : 'Picking values for other updates'
+@AbapCatalog.enhancement.category : #NOT_EXTENSIBLE
+@AbapCatalog.tableCategory : #TRANSPARENT
+@AbapCatalog.deliveryClass : #A
+@AbapCatalog.dataMaintenance : #RESTRICTED
+define table zvalue {
+  key client     : abap.clnt not null;
+  key row_number : zde_row_number not null;
+  pnr            : zde_pnr_id_int;
+  travel_id      : zde_travel_id_int;
+  bus_id         : zde_bus_id_int;
+
+}
